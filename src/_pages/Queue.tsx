@@ -34,6 +34,7 @@ const Queue: React.FC<QueueProps> = ({ setView }) => {
   const chatInputRef = useRef<HTMLInputElement>(null)
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isRecorderDialogOpen, setIsRecorderDialogOpen] = useState(false)
   const [currentModel, setCurrentModel] = useState<{ provider: string; model: string }>({ provider: "gemini", model: "gemini-3-pro-preview" })
 
   const barRef = useRef<HTMLDivElement>(null)
@@ -120,6 +121,13 @@ const Queue: React.FC<QueueProps> = ({ setView }) => {
       if (contentRef.current) {
         let contentHeight = contentRef.current.scrollHeight
         const contentWidth = contentRef.current.scrollWidth
+
+        // Recorder result dialog is rendered in a portal and does not affect
+        // contentRef scrollHeight. Keep enough height so the dialog is visible.
+        if (isRecorderDialogOpen) {
+          contentHeight = Math.max(contentHeight, 420)
+        }
+
         if (isTooltipVisible) {
           contentHeight += tooltipHeight
         }
@@ -161,7 +169,7 @@ const Queue: React.FC<QueueProps> = ({ setView }) => {
       resizeObserver.disconnect()
       cleanupFunctions.forEach((cleanup) => cleanup())
     }
-  }, [isTooltipVisible, tooltipHeight])
+  }, [isTooltipVisible, tooltipHeight, isRecorderDialogOpen])
 
   // Seamless screenshot-to-LLM flow
   useEffect(() => {
@@ -239,6 +247,7 @@ const Queue: React.FC<QueueProps> = ({ setView }) => {
             <QueueCommands
               screenshots={screenshots}
               onTooltipVisibilityChange={handleTooltipVisibilityChange}
+              onRecorderDialogVisibilityChange={setIsRecorderDialogOpen}
               onChatToggle={handleChatToggle}
               onSettingsToggle={handleSettingsToggle}
             />
