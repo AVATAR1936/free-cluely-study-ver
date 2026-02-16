@@ -1,6 +1,10 @@
 import React, { useState, useRef } from 'react';
 
-export const AudioRecorder = () => {
+interface AudioRecorderProps {
+  onResult?: (result: { transcription?: string; notes?: string; error?: string }) => void;
+}
+
+export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onResult }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -56,13 +60,16 @@ export const AudioRecorder = () => {
             if (result.success) {
                 console.log("Транскрипция:", result.transcription);
                 console.log("Заметки:", result.notes);
-                alert("Успешно! Заметки сгенерированы (см. консоль для деталей).");
+                onResult?.({
+                  transcription: result.transcription,
+                  notes: result.notes,
+                });
             } else {
-                alert("Ошибка обработки: " + result.error);
+                onResult?.({ error: result.error || "Ошибка обработки аудио." });
             }
         } catch (e) {
             console.error(e);
-            alert("Ошибка отправки данных в Electron.");
+            onResult?.({ error: "Ошибка отправки данных в Electron." });
         } finally {
             setIsProcessing(false);
             
