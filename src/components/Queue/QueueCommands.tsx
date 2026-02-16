@@ -62,13 +62,15 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
   }
 
   const handleCopyResult = async () => {
-    if (!recorderPanel.copyValue) {
+    const valueToCopy = recorderPanel.copyValue || recorderPanel.description
+
+    if (!valueToCopy) {
       setCopyStatus("Nothing to copy")
       return
     }
 
     try {
-      await navigator.clipboard.writeText(recorderPanel.copyValue)
+      await navigator.clipboard.writeText(valueToCopy)
       setCopyStatus("Copied!")
     } catch {
       setCopyStatus("Copy failed")
@@ -163,7 +165,7 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
               const transcription = result.transcription?.trim() || "(empty transcription)"
               const notes = result.notes?.trim() || "(no notes)"
               const description = `Transcription:\n${transcription}\n\nOllama Notes:\n${notes}`
-              showRecorderPanel("Record Audio (Ollama) Result", description, notes)
+              showRecorderPanel("Record Audio (Ollama) Result", description, description)
             }}
           />
         </div>
