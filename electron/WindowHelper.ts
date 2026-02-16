@@ -130,7 +130,7 @@ export class WindowHelper {
         this.centerWindow()
         this.mainWindow.show()
         this.mainWindow.focus()
-        this.mainWindow.setAlwaysOnTop(true)
+        this.mainWindow.setAlwaysOnTop(true, "screen-saver")
         console.log("Window is now visible and centered")
       }
     })
@@ -209,7 +209,7 @@ export class WindowHelper {
     }
 
     this.mainWindow.showInactive()
-
+    this.mainWindow.setAlwaysOnTop(true, "screen-saver")
     this.isWindowVisible = true
   }
 

@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI, GenerativeModel } from "@google/generative-ai"
 import fs from "fs"
+import { TranscriptionHelper } from "./TranscriptionHelper"
 
 interface OllamaResponse {
   response: string
@@ -12,6 +13,7 @@ export class LLMHelper {
   private useOllama: boolean = false
   private ollamaModel: string = "llama3.2"
   private ollamaUrl: string = "http://localhost:11434"
+  private transcriptionHelper: TranscriptionHelper;
 
   constructor(apiKey?: string, useOllama: boolean = false, ollamaModel?: string, ollamaUrl?: string) {
     this.useOllama = useOllama
@@ -25,11 +27,12 @@ export class LLMHelper {
       this.initializeOllamaModel()
     } else if (apiKey) {
       const genAI = new GoogleGenerativeAI(apiKey)
-      this.model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" })
+      this.model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" })
       console.log("[LLMHelper] Using Google Gemini")
     } else {
       throw new Error("Either provide Gemini API key or enable Ollama mode")
     }
+    this.transcriptionHelper = new TranscriptionHelper();
   }
 
   private async fileToGenerativePart(imagePath: string) {
@@ -118,6 +121,63 @@ export class LLMHelper {
       } catch (fallbackError) {
         console.error(`[LLMHelper] Fallback also failed: ${fallbackError.message}`)
       }
+    }
+  }
+
+  public async processMeetingAudio(audioBuffer: Buffer): Promise<{ success: boolean, transcription: string, notes: string, error?: string }> {
+    try {
+      console.log("[LLMHelper] Starting meeting processing...");
+
+      // 1. Транскрибация (локально через Whisper)
+      const transcription = await this.transcriptionHelper.transcribeAudio(audioBuffer);
+      
+      if (!transcription || transcription.trim().length === 0) {
+        return { 
+            success: false, 
+            transcription: "", 
+            notes: "", 
+            error: "Whisper не смог распознать речь или запись пустая." 
+        };
+      }
+
+      console.log("[LLMHelper] Transcription complete. Length:", transcription.length);
+
+      // 2. Подготовка промпта для LLM
+      const prompt = `
+        Ти — розумний асистент для ведення нотаток із зустрічей.
+        Нижче наведено транскрибований текст аудіозапису.
+        
+        Текст:
+        """
+        ${transcription}
+        """
+        
+        Твоє завдання:
+        1. Зробити коротке резюме (Summary) зустрічі.
+        2. Виділити ключові моменти (Key Points) списком.
+        3. Якщо є завдання або домовленості, виписати їх як "Action Items".
+        
+        Важливо: відповідай ВИКЛЮЧНО українською мовою, незалежно від того, якою мовою вівся діалог у тексті. Структуруй відповідь красиво.
+      `;
+
+      // 3. Отправка в LLM (Ollama или Gemini - в зависимости от того, что включено)
+      // Используем chatWithGemini, так как он внутри себя уже рулит выбором провайдера (Ollama/Gemini)
+      const notes = await this.chatWithGemini(prompt);
+
+      return {
+        success: true,
+        transcription,
+        notes
+      };
+
+    } catch (error: any) {
+      console.error("[LLMHelper] Error processing meeting:", error);
+      return { 
+          success: false, 
+          transcription: "", 
+          notes: "", 
+          error: error.message 
+      };
     }
   }
 
@@ -298,7 +358,7 @@ export class LLMHelper {
   }
 
   public getCurrentModel(): string {
-    return this.useOllama ? this.ollamaModel : "gemini-2.0-flash";
+    return this.useOllama ? this.ollamaModel : "gemini-2.5-flash-lite";
   }
 
   public async switchToOllama(model?: string, url?: string): Promise<void> {
@@ -318,7 +378,7 @@ export class LLMHelper {
   public async switchToGemini(apiKey?: string): Promise<void> {
     if (apiKey) {
       const genAI = new GoogleGenerativeAI(apiKey);
-      this.model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+      this.model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
     }
     
     if (!this.model && !apiKey) {

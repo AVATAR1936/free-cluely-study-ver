@@ -1,9 +1,10 @@
-import { app, BrowserWindow, Tray, Menu, nativeImage } from "electron"
+import { app, BrowserWindow, Tray, Menu, nativeImage, session, desktopCapturer } from "electron"
 import { initializeIpcHandlers } from "./ipcHandlers"
 import { WindowHelper } from "./WindowHelper"
 import { ScreenshotHelper } from "./ScreenshotHelper"
 import { ShortcutsHelper } from "./shortcuts"
 import { ProcessingHelper } from "./ProcessingHelper"
+import { TranscriptionHelper } from "./TranscriptionHelper"; // Import for Whisper
 
 export class AppState {
   private static instance: AppState | null = null
@@ -12,6 +13,7 @@ export class AppState {
   private screenshotHelper: ScreenshotHelper
   public shortcutsHelper: ShortcutsHelper
   public processingHelper: ProcessingHelper
+  public transcriptionHelper: TranscriptionHelper
   private tray: Tray | null = null
 
   // View management
@@ -57,6 +59,9 @@ export class AppState {
 
     // Initialize ShortcutsHelper
     this.shortcutsHelper = new ShortcutsHelper(this)
+
+    // Initialize TranscriptionHelper
+    this.transcriptionHelper = new TranscriptionHelper();
   }
 
   public static getInstance(): AppState {
@@ -275,11 +280,21 @@ async function initializeApp() {
   initializeIpcHandlers(appState)
 
   app.whenReady().then(() => {
-    console.log("App is ready")
-    appState.createWindow()
-    appState.createTray()
-    // Register global shortcuts using ShortcutsHelper
-    appState.shortcutsHelper.registerGlobalShortcuts()
+  console.log("App is ready")
+
+  // === ВСТАВИТЬ ЭТОТ БЛОК ===
+  session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
+    desktopCapturer.getSources({ types: ['screen'] }).then((sources) => {
+      // Разрешаем доступ к первому экрану и системному звуку (loopback)
+      callback({ video: sources[0], audio: 'loopback' })
+    })
+  })
+  // ==========================
+
+  appState.createWindow()
+  appState.createTray()
+  // Register global shortcuts using ShortcutsHelper
+  appState.shortcutsHelper.registerGlobalShortcuts()
   })
 
   app.on("activate", () => {

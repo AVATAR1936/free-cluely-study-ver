@@ -4,6 +4,7 @@ import { ToastViewport } from "@radix-ui/react-toast"
 import { useEffect, useRef, useState } from "react"
 import Solutions from "./_pages/Solutions"
 import { QueryClient, QueryClientProvider } from "react-query"
+import { AudioRecorder } from "./components/AudioRecorder";
 
 declare global {
   interface Window {
@@ -42,6 +43,14 @@ declare global {
       // Audio Processing
       analyzeAudioFromBase64: (data: string, mimeType: string) => Promise<{ text: string; timestamp: number }>
       analyzeAudioFile: (path: string) => Promise<{ text: string; timestamp: number }>
+      
+      // Transcribe & Analyze (New Method)
+      transcribeAndAnalyze: (buffer: ArrayBuffer) => Promise<{
+        success: boolean;
+        transcription?: string;
+        notes?: string;
+        error?: string;
+      }>
 
       moveWindowLeft: () => Promise<void>
       moveWindowRight: () => Promise<void>
@@ -164,9 +173,14 @@ const App: React.FC = () => {
   }, [])
 
   return (
-    <div ref={containerRef} className="min-h-0">
+    <div ref={containerRef} className="min-h-0 relative">
       <QueryClientProvider client={queryClient}>
         <ToastProvider>
+          {/* Audio Recorder positioned absolute to overlay content */}
+          <div className="absolute top-4 right-4 z-50">
+            <AudioRecorder />
+          </div>
+
           {view === "queue" ? (
             <Queue setView={setView} />
           ) : view === "solutions" ? (

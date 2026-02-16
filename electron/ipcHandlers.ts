@@ -196,4 +196,15 @@ export function initializeIpcHandlers(appState: AppState): void {
       return { success: false, error: error.message };
     }
   });
+
+  ipcMain.handle("transcribe-and-analyze", async (event, arrayBuffer: ArrayBuffer) => {
+    try {
+      const buffer = Buffer.from(arrayBuffer);
+      const result = await appState.processingHelper.getLLMHelper().processMeetingAudio(buffer);
+      return result;
+    } catch (error: any) {
+      console.error("IPC Error:", error);
+      return { success: false, error: error.message };
+    }
+  });
 }
