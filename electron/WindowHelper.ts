@@ -37,14 +37,18 @@ export class WindowHelper {
     const primaryDisplay = screen.getPrimaryDisplay()
     const workArea = primaryDisplay.workAreaSize
 
-    // Use 75% width if debugging has occurred, otherwise use 60%
     const maxAllowedWidth = Math.floor(
       workArea.width * (this.appState.getHasDebugged() ? 0.75 : 0.5)
     )
 
-    // Ensure width doesn't exceed max allowed width and height is reasonable
+    // Ширину оставляем как есть, раз она вас устраивает
     const newWidth = Math.min(width + 32, maxAllowedWidth)
-    const newHeight = Math.ceil(height)
+    
+    // === ИЗМЕНЕНИЕ ЗДЕСЬ ===
+    // Добавляем +40 пикселей к высоте.
+    // Это компенсирует любые переносы строк и "съедание" краев окна системой.
+    const newHeight = Math.ceil(height) + 450
+    // =======================
 
     // Center the window horizontally if it would go off screen
     const maxX = workArea.width - newWidth
@@ -62,6 +66,48 @@ export class WindowHelper {
     this.windowPosition = { x: newX, y: currentY }
     this.windowSize = { width: newWidth, height: newHeight }
     this.currentX = newX
+  }
+
+  public resizeWindow(
+    width: number,
+    height: number,
+    animate: boolean = false
+  ): { previous: { width: number; height: number }; current: { width: number; height: number } } | null {
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) return null
+
+    const [previousWidth, previousHeight] = this.mainWindow.getSize()
+    const [currentX, currentY] = this.mainWindow.getPosition()
+
+    const primaryDisplay = screen.getPrimaryDisplay()
+    const workArea = primaryDisplay.workAreaSize
+
+    const targetWidth = Math.min(Math.max(Math.round(width), 300), workArea.width)
+    const targetHeight = Math.min(Math.max(Math.round(height), 200), workArea.height)
+
+    const maxX = workArea.width - targetWidth
+    const maxY = workArea.height - targetHeight
+    const nextX = Math.min(Math.max(currentX, 0), maxX)
+    const nextY = Math.min(Math.max(currentY, 0), maxY)
+
+    this.mainWindow.setBounds(
+      {
+        x: nextX,
+        y: nextY,
+        width: targetWidth,
+        height: targetHeight
+      },
+      animate
+    )
+
+    this.windowPosition = { x: nextX, y: nextY }
+    this.windowSize = { width: targetWidth, height: targetHeight }
+    this.currentX = nextX
+    this.currentY = nextY
+
+    return {
+      previous: { width: previousWidth, height: previousHeight },
+      current: { width: targetWidth, height: targetHeight }
+    }
   }
 
   public createWindow(): void {
@@ -92,6 +138,7 @@ export class WindowHelper {
       backgroundColor: "#00000000",
       focusable: true,
       resizable: true,
+      type: 'toolbar',
       movable: true,
       x: 100, // Start at a visible position
       y: 100
