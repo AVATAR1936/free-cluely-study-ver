@@ -41,14 +41,13 @@ export class WindowHelper {
       workArea.width * (this.appState.getHasDebugged() ? 0.75 : 0.5)
     )
 
-    // Ширину оставляем как есть, раз она вас устраивает
+    // Keep current horizontal padding behavior.
     const newWidth = Math.min(width + 32, maxAllowedWidth)
-    
-    // === ИЗМЕНЕНИЕ ЗДЕСЬ ===
-    // Добавляем +40 пикселей к высоте.
-    // Это компенсирует любые переносы строк и "съедание" краев окна системой.
-    const newHeight = Math.ceil(height) + 450
-    // =======================
+
+    // Add a modest vertical buffer for wrapped lines and window chrome.
+    const desiredHeight = Math.ceil(height) + 40
+    const maxAllowedHeight = workArea.height - currentY
+    const newHeight = Math.min(desiredHeight, Math.max(maxAllowedHeight, 200))
 
     // Center the window horizontally if it would go off screen
     const maxX = workArea.width - newWidth

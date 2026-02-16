@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react"
 import { IoLogOutOutline } from "react-icons/io5"
-import { Dialog, DialogContent, DialogClose } from "../ui/dialog"
 import { AudioRecorder } from "../AudioRecorder"
 
 interface QueueCommandsProps {
@@ -10,8 +9,8 @@ interface QueueCommandsProps {
   onSettingsToggle: () => void
 }
 
-interface RecorderDialogState {
-  open: boolean
+interface RecorderPanelState {
+  visible: boolean
   title: string
   description: string
   copyValue: string
@@ -27,8 +26,8 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
   const tooltipRef = useRef<HTMLDivElement>(null)
   const [isRecording, setIsRecording] = useState(false)
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
-  const [recorderDialog, setRecorderDialog] = useState<RecorderDialogState>({
-    open: false,
+  const [recorderPanel, setRecorderPanel] = useState<RecorderPanelState>({
+    visible: false,
     title: "",
     description: "",
     copyValue: "",
@@ -44,9 +43,9 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
     onTooltipVisibilityChange(isTooltipVisible, tooltipHeight)
   }, [isTooltipVisible])
 
-  const showRecorderDialog = (title: string, description: string, copyValue: string) => {
-    setRecorderDialog({
-      open: true,
+  const showRecorderPanel = (title: string, description: string, copyValue: string) => {
+    setRecorderPanel({
+      visible: true,
       title,
       description,
       copyValue,
@@ -63,13 +62,13 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
   }
 
   const handleCopyResult = async () => {
-    if (!recorderDialog.copyValue) {
+    if (!recorderPanel.copyValue) {
       setCopyStatus("Nothing to copy")
       return
     }
 
     try {
-      await navigator.clipboard.writeText(recorderDialog.copyValue)
+      await navigator.clipboard.writeText(recorderPanel.copyValue)
       setCopyStatus("Copied!")
     } catch {
       setCopyStatus("Copy failed")
@@ -90,9 +89,9 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
             const base64Data = (reader.result as string).split(',')[1]
             try {
               const result = await window.electronAPI.analyzeAudioFromBase64(base64Data, blob.type)
-              showRecorderDialog("Record Voice Result", result.text, result.text)
+              showRecorderPanel("Record Voice Result", result.text, result.text)
             } catch {
-              showRecorderDialog("Record Voice Result", "Audio analysis failed.", "")
+              showRecorderPanel("Record Voice Result", "Audio analysis failed.", "")
             }
           }
           reader.readAsDataURL(blob)
@@ -101,7 +100,7 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
         recorder.start()
         setIsRecording(true)
       } catch {
-        showRecorderDialog("Record Voice Result", "Could not start recording.", "")
+        showRecorderPanel("Record Voice Result", "Could not start recording.", "")
       }
     } else {
       mediaRecorder?.stop()
@@ -111,7 +110,7 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
   }
 
   return (
-    <div className="w-fit">
+    <div className="w-full">
       <div className="text-xs text-white/90 liquid-glass-bar py-1 px-4 flex items-center justify-center gap-4 draggable-area">
         <div className="flex items-center gap-2">
           <span className="text-[11px] leading-none">Show/Hide</span>
@@ -157,14 +156,14 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
           <AudioRecorder
             onResult={(result) => {
               if (result.error) {
-                showRecorderDialog("Record Audio (Ollama) Result", result.error, "")
+                showRecorderPanel("Record Audio (Ollama) Result", result.error, "")
                 return
               }
 
               const transcription = result.transcription?.trim() || "(empty transcription)"
               const notes = result.notes?.trim() || "(no notes)"
               const description = `Transcription:\n${transcription}\n\nOllama Notes:\n${notes}`
-              showRecorderDialog("Record Audio (Ollama) Result", description, notes)
+              showRecorderPanel("Record Audio (Ollama) Result", description, notes)
             }}
           />
         </div>
@@ -276,15 +275,12 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
         </button>
       </div>
 
-      <Dialog
-        open={recorderDialog.open}
-        onOpenChange={(open) => setRecorderDialog((prev) => ({ ...prev, open }))}
-      >
-        <DialogContent className="w-[min(90vw,560px)] space-y-4 border border-white/30 bg-white/20 p-4 text-gray-800 backdrop-blur-md">
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-gray-800">{recorderDialog.title}</h3>
+      {recorderPanel.visible && (
+        <div className="mt-4 w-full mx-auto">
+          <div className="space-y-3 rounded-lg border border-white/30 bg-white/20 p-4 text-gray-800 backdrop-blur-md">
+            <h3 className="text-sm font-semibold text-gray-800">{recorderPanel.title}</h3>
             <div className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-md bg-white/40 p-3 text-xs leading-relaxed text-gray-700">
-              {recorderDialog.description}
+              {recorderPanel.description}
             </div>
             <div className="flex items-center justify-between gap-2">
               <button
@@ -295,15 +291,17 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
                 📋 Copy Ollama result
               </button>
               <span className="text-xs text-gray-600">{copyStatus}</span>
-              <DialogClose asChild>
-                <button className="rounded bg-white/40 px-3 py-2 text-xs text-gray-700 transition-all hover:bg-white/60" type="button">
-                  Close
-                </button>
-              </DialogClose>
+              <button
+                className="rounded bg-white/40 px-3 py-2 text-xs text-gray-700 transition-all hover:bg-white/60"
+                onClick={() => setRecorderPanel((prev) => ({ ...prev, visible: false }))}
+                type="button"
+              >
+                Close
+              </button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
     </div>
   )
 }
