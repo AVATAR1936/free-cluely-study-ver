@@ -1,6 +1,11 @@
 import React, { useState, useRef } from 'react';
 
-export const AudioRecorder = () => {
+interface AudioRecorderProps {
+  location?: 'command-bar'
+}
+
+export const AudioRecorder = ({ location }: AudioRecorderProps) => {
+  if (location !== 'command-bar') return null
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -95,11 +100,9 @@ export const AudioRecorder = () => {
     }
   };
 
-  // Стили
-  const baseBtnStyle = "px-3 py-2 rounded text-xs transition-all shadow-md font-medium text-white flex items-center gap-2";
-  const startBtnStyle = "bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400";
-  const stopBtnStyle = "bg-red-500 hover:bg-red-600 animate-pulse";
-  const processingStyle = "bg-yellow-500 cursor-wait";
+  const baseBtnStyle = "bg-white/10 hover:bg-white/20 transition-colors rounded-md px-2 py-1 text-[11px] leading-none text-white/70 flex items-center gap-1";
+  const recordingBtnStyle = "bg-red-500/70 hover:bg-red-500/90";
+  const processingStyle = "bg-yellow-500/70 hover:bg-yellow-500/70 cursor-wait";
 
   return (
     <div className="flex items-center gap-2">
@@ -107,16 +110,18 @@ export const AudioRecorder = () => {
         <button 
             onClick={startRecording} 
             disabled={isProcessing}
-            className={`${baseBtnStyle} ${isProcessing ? processingStyle : startBtnStyle}`}
+            className={`${baseBtnStyle} ${isProcessing ? processingStyle : ''}`}
+            type="button"
         >
-            {isProcessing ? "⏳ Обработка..." : "🎙️ Запись (Audio)"}
+            {isProcessing ? "⏳ Processing..." : "🎙️ Record Audio"}
         </button>
       ) : (
         <button 
             onClick={stopRecording} 
-            className={`${baseBtnStyle} ${stopBtnStyle}`}
+            className={`${baseBtnStyle} ${recordingBtnStyle}`}
+            type="button"
         >
-            ⏹️ Стоп
+            <span className="animate-pulse">● Stop Audio</span>
         </button>
       )}
     </div>
