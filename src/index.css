@@ -165,3 +165,39 @@ button, input, select, textarea, .interactive {
   animation: shimmer 3s ease-in-out infinite;
   pointer-events: none;
 }
+
+.markdown-latex-content {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.markdown-latex-content p,
+.markdown-latex-content ul,
+.markdown-latex-content ol,
+.markdown-latex-content pre,
+.markdown-latex-content blockquote,
+.markdown-latex-content h1,
+.markdown-latex-content h2,
+.markdown-latex-content h3,
+.markdown-latex-content h4 {
+  margin: 0.25rem 0;
+}
+
+.markdown-latex-content code {
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 0.25rem;
+  padding: 0.05rem 0.25rem;
+}
+
+.markdown-latex-content pre {
+  white-space: pre-wrap;
+  background: rgba(255, 255, 255, 0.45);
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+}
+
+.markdown-latex-content .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.2rem 0;
+}

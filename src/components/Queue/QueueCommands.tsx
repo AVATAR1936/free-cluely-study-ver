@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react"
 import { IoLogOutOutline } from "react-icons/io5"
 import { AudioRecorder } from "../AudioRecorder"
+import MarkdownLatexRenderer from "../MarkdownLatexRenderer"
 
 interface QueueCommandsProps {
   onTooltipVisibilityChange: (visible: boolean, height: number) => void
@@ -282,7 +283,10 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
           <div className="space-y-3 rounded-lg border border-white/30 bg-white/20 p-4 text-gray-800 backdrop-blur-md">
             <h3 className="text-sm font-semibold text-gray-800">{recorderPanel.title}</h3>
             <div className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-md bg-white/40 p-3 text-xs leading-relaxed text-gray-700">
-              {recorderPanel.description}
+              <MarkdownLatexRenderer
+                content={recorderPanel.description}
+                className="markdown-latex-content"
+              />
             </div>
             <div className="flex items-center justify-between gap-2">
               <button
