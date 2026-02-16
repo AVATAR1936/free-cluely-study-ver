@@ -6,6 +6,17 @@ interface ElectronAPI {
     width: number
     height: number
   }) => Promise<void>
+  resizeWindow: (dimensions: {
+    width: number
+    height: number
+    animate?: boolean
+  }) => Promise<
+    | {
+        previous: { width: number; height: number }
+        current: { width: number; height: number }
+      }
+    | null
+  >
   getScreenshots: () => Promise<Array<{ path: string; preview: string }>>
   deleteScreenshot: (
     path: string
@@ -71,6 +82,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   updateContentDimensions: (dimensions: { width: number; height: number }) =>
     ipcRenderer.invoke("update-content-dimensions", dimensions),
+  resizeWindow: (dimensions: {
+    width: number
+    height: number
+    animate?: boolean
+  }) => ipcRenderer.invoke("resize-window", dimensions),
   takeScreenshot: () => ipcRenderer.invoke("take-screenshot"),
   getScreenshots: () => ipcRenderer.invoke("get-screenshots"),
   deleteScreenshot: (path: string) =>
