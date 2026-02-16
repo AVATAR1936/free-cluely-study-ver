@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react"
 import { IoLogOutOutline } from "react-icons/io5"
 import { Dialog, DialogContent, DialogClose } from "../ui/dialog"
+import { AudioRecorder } from "../AudioRecorder"
 
 interface QueueCommandsProps {
   onTooltipVisibilityChange: (visible: boolean, height: number) => void
@@ -124,6 +125,11 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
               <span>🎤 Record Voice</span>
             )}
           </button>
+        </div>
+
+        {/* Audio Recorder Button */}
+        <div className="flex items-center gap-2">
+          <AudioRecorder />
         </div>
 
         {/* Chat Button */}
