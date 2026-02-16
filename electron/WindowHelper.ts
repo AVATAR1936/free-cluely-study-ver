@@ -64,48 +64,6 @@ export class WindowHelper {
     this.currentX = newX
   }
 
-  public resizeWindow(
-    width: number,
-    height: number,
-    animate: boolean = false
-  ): { previous: { width: number; height: number }; current: { width: number; height: number } } | null {
-    if (!this.mainWindow || this.mainWindow.isDestroyed()) return null
-
-    const [previousWidth, previousHeight] = this.mainWindow.getSize()
-    const [currentX, currentY] = this.mainWindow.getPosition()
-
-    const primaryDisplay = screen.getPrimaryDisplay()
-    const workArea = primaryDisplay.workAreaSize
-
-    const targetWidth = Math.min(Math.max(Math.round(width), 300), workArea.width)
-    const targetHeight = Math.min(Math.max(Math.round(height), 200), workArea.height)
-
-    const maxX = workArea.width - targetWidth
-    const maxY = workArea.height - targetHeight
-    const nextX = Math.min(Math.max(currentX, 0), maxX)
-    const nextY = Math.min(Math.max(currentY, 0), maxY)
-
-    this.mainWindow.setBounds(
-      {
-        x: nextX,
-        y: nextY,
-        width: targetWidth,
-        height: targetHeight
-      },
-      animate
-    )
-
-    this.windowPosition = { x: nextX, y: nextY }
-    this.windowSize = { width: targetWidth, height: targetHeight }
-    this.currentX = nextX
-    this.currentY = nextY
-
-    return {
-      previous: { width: previousWidth, height: previousHeight },
-      current: { width: targetWidth, height: targetHeight }
-    }
-  }
-
   public createWindow(): void {
     if (this.mainWindow !== null) return
 
