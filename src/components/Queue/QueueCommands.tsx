@@ -5,7 +5,6 @@ import { AudioRecorder } from "../AudioRecorder"
 
 interface QueueCommandsProps {
   onTooltipVisibilityChange: (visible: boolean, height: number) => void
-  onRecorderDialogVisibilityChange?: (visible: boolean) => void
   screenshots: Array<{ path: string; preview: string }>
   onChatToggle: () => void
   onSettingsToggle: () => void
@@ -20,7 +19,6 @@ interface RecorderDialogState {
 
 const QueueCommands: React.FC<QueueCommandsProps> = ({
   onTooltipVisibilityChange,
-  onRecorderDialogVisibilityChange,
   screenshots,
   onChatToggle,
   onSettingsToggle
@@ -45,10 +43,6 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
     }
     onTooltipVisibilityChange(isTooltipVisible, tooltipHeight)
   }, [isTooltipVisible])
-
-  useEffect(() => {
-    onRecorderDialogVisibilityChange?.(recorderDialog.open)
-  }, [recorderDialog.open, onRecorderDialogVisibilityChange])
 
   const showRecorderDialog = (title: string, description: string, copyValue: string) => {
     setRecorderDialog({
