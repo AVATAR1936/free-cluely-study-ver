@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react"
 import { IoLogOutOutline } from "react-icons/io5"
-import { Dialog, DialogContent, DialogClose } from "../ui/dialog"
 import { AudioRecorder } from "../AudioRecorder"
 
 interface QueueCommandsProps {
@@ -276,34 +275,35 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
         </button>
       </div>
 
-      <Dialog
-        open={recorderDialog.open}
-        onOpenChange={(open) => setRecorderDialog((prev) => ({ ...prev, open }))}
-      >
-        <DialogContent className="w-[min(90vw,680px)] border border-white/10 text-white">
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold">{recorderDialog.title}</h3>
-            <div className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-md bg-black/40 p-3 text-xs leading-relaxed text-white/90">
-              {recorderDialog.description}
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <button
-                className="bg-white/10 hover:bg-white/20 transition-colors rounded-md px-2 py-1 text-[11px] leading-none text-white/80"
-                onClick={handleCopyResult}
-                type="button"
-              >
-                📋 Copy Ollama result
-              </button>
-              <span className="text-[11px] text-white/60">{copyStatus}</span>
-              <DialogClose asChild>
-                <button className="bg-white/10 hover:bg-white/20 transition-colors rounded-md px-2 py-1 text-[11px] leading-none text-white/80" type="button">
+      {recorderDialog.open && (
+        <div className="mt-4 w-full">
+          <div className="w-[min(90vw,560px)] space-y-4 rounded-lg border border-white/30 bg-white/20 p-4 text-gray-800 shadow-lg backdrop-blur-md">
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-gray-800">{recorderDialog.title}</h3>
+              <div className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-md bg-white/40 p-3 text-xs leading-relaxed text-gray-700">
+                {recorderDialog.description}
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  className="rounded bg-white/40 px-3 py-2 text-xs text-gray-700 transition-all hover:bg-white/60"
+                  onClick={handleCopyResult}
+                  type="button"
+                >
+                  📋 Copy Ollama result
+                </button>
+                <span className="text-xs text-gray-600">{copyStatus}</span>
+                <button
+                  className="rounded bg-white/40 px-3 py-2 text-xs text-gray-700 transition-all hover:bg-white/60"
+                  onClick={() => setRecorderDialog((prev) => ({ ...prev, open: false }))}
+                  type="button"
+                >
                   Close
                 </button>
-              </DialogClose>
+              </div>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
     </div>
   )
 }
