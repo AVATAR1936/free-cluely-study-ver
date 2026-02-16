@@ -17,9 +17,6 @@ interface RecorderDialogState {
   copyValue: string
 }
 
-const COMPACT_WINDOW_SIZE = { width: 400, height: 150 }
-const MODAL_WINDOW_SIZE = { width: 800, height: 600 }
-
 const QueueCommands: React.FC<QueueCommandsProps> = ({
   onTooltipVisibilityChange,
   screenshots,
@@ -46,20 +43,6 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
     }
     onTooltipVisibilityChange(isTooltipVisible, tooltipHeight)
   }, [isTooltipVisible])
-
-  useEffect(() => {
-    const targetSize = recorderDialog.open ? MODAL_WINDOW_SIZE : COMPACT_WINDOW_SIZE
-
-    window.electronAPI
-      .resizeWindow({
-        width: targetSize.width,
-        height: targetSize.height,
-        animate: true
-      })
-      .catch((error: unknown) => {
-        console.error("Failed to resize window:", error)
-      })
-  }, [recorderDialog.open])
 
   const showRecorderDialog = (title: string, description: string, copyValue: string) => {
     setRecorderDialog({
