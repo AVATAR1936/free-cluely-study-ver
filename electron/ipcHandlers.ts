@@ -59,6 +59,24 @@ export function initializeIpcHandlers(appState: AppState): void {
     appState.toggleMainWindow()
   })
 
+  ipcMain.handle(
+    "resize-window",
+    async (
+      event,
+      {
+        width,
+        height,
+        animate = false
+      }: { width: number; height: number; animate?: boolean }
+    ) => {
+      if (!Number.isFinite(width) || !Number.isFinite(height)) {
+        throw new Error("Invalid resize dimensions")
+      }
+
+      return appState.resizeWindow(width, height, animate)
+    }
+  )
+
   ipcMain.handle("reset-queues", async () => {
     try {
       appState.clearQueues()

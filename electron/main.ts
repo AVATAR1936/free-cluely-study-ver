@@ -136,6 +136,14 @@ export class AppState {
     this.windowHelper.setWindowDimensions(width, height)
   }
 
+  public resizeWindow(
+    width: number,
+    height: number,
+    animate: boolean = false
+  ): { previous: { width: number; height: number }; current: { width: number; height: number } } | null {
+    return this.windowHelper.resizeWindow(width, height, animate)
+  }
+
   public clearQueues(): void {
     this.screenshotHelper.clearQueues()
 

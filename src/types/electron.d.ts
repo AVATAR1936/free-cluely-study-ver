@@ -4,6 +4,17 @@ export interface ElectronAPI {
     width: number
     height: number
   }) => Promise<void>
+  resizeWindow: (dimensions: {
+    width: number
+    height: number
+    animate?: boolean
+  }) => Promise<
+    | {
+        previous: { width: number; height: number }
+        current: { width: number; height: number }
+      }
+    | null
+  >
   
   // --- Screenshots ---
   getScreenshots: () => Promise<Array<{ path: string; preview: string }>>
