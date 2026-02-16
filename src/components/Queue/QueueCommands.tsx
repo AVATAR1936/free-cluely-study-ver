@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react"
 import { IoLogOutOutline } from "react-icons/io5"
+import { Dialog, DialogContent, DialogClose } from "../ui/dialog"
 import { AudioRecorder } from "../AudioRecorder"
 
 interface QueueCommandsProps {
@@ -57,21 +58,8 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
     setIsTooltipVisible(true)
   }
 
-  const handleMouseEnter = () => setIsTooltipVisible(true)
-  const handleMouseLeave = () => setIsTooltipVisible(false)
-
-  const handleCopy = async (value: string, successText: string) => {
-    if (!value) {
-      setCopyStatus("Nothing to copy")
-      return
-    }
-
-    try {
-      await navigator.clipboard.writeText(value)
-      setCopyStatus(successText)
-    } catch {
-      setCopyStatus("Copy failed")
-    }
+  const handleMouseLeave = () => {
+    setIsTooltipVisible(false)
   }
 
   const handleCopyResult = async () => {
@@ -95,12 +83,11 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
         const recorder = new MediaRecorder(stream)
         recorder.ondataavailable = (e) => chunks.current.push(e.data)
         recorder.onstop = async () => {
-          const blob = new Blob(chunks.current, { type: chunks.current[0]?.type || "audio/webm" })
+          const blob = new Blob(chunks.current, { type: chunks.current[0]?.type || 'audio/webm' })
           chunks.current = []
           const reader = new FileReader()
-
           reader.onloadend = async () => {
-            const base64Data = (reader.result as string).split(",")[1]
+            const base64Data = (reader.result as string).split(',')[1]
             try {
               const result = await window.electronAPI.analyzeAudioFromBase64(base64Data, blob.type)
               showRecorderDialog("Record Voice Result", result.text, result.text)
@@ -108,10 +95,8 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
               showRecorderDialog("Record Voice Result", "Audio analysis failed.", "")
             }
           }
-
           reader.readAsDataURL(blob)
         }
-
         setMediaRecorder(recorder)
         recorder.start()
         setIsRecording(true)
@@ -131,8 +116,12 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
         <div className="flex items-center gap-2">
           <span className="text-[11px] leading-none">Show/Hide</span>
           <div className="flex gap-1">
-            <button className="bg-white/10 hover:bg-white/20 transition-colors rounded-md px-1.5 py-1 text-[11px] leading-none text-white/70">⌘</button>
-            <button className="bg-white/10 hover:bg-white/20 transition-colors rounded-md px-1.5 py-1 text-[11px] leading-none text-white/70">B</button>
+            <button className="bg-white/10 hover:bg-white/20 transition-colors rounded-md px-1.5 py-1 text-[11px] leading-none text-white/70">
+              ⌘
+            </button>
+            <button className="bg-white/10 hover:bg-white/20 transition-colors rounded-md px-1.5 py-1 text-[11px] leading-none text-white/70">
+              B
+            </button>
           </div>
         </div>
 
@@ -140,19 +129,27 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
           <div className="flex items-center gap-2">
             <span className="text-[11px] leading-none">Solve</span>
             <div className="flex gap-1">
-              <button className="bg-white/10 hover:bg-white/20 transition-colors rounded-md px-1.5 py-1 text-[11px] leading-none text-white/70">⌘</button>
-              <button className="bg-white/10 hover:bg-white/20 transition-colors rounded-md px-1.5 py-1 text-[11px] leading-none text-white/70">↵</button>
+              <button className="bg-white/10 hover:bg-white/20 transition-colors rounded-md px-1.5 py-1 text-[11px] leading-none text-white/70">
+                ⌘
+              </button>
+              <button className="bg-white/10 hover:bg-white/20 transition-colors rounded-md px-1.5 py-1 text-[11px] leading-none text-white/70">
+                ↵
+              </button>
             </div>
           </div>
         )}
 
         <div className="flex items-center gap-2">
           <button
-            className={`bg-white/10 hover:bg-white/20 transition-colors rounded-md px-2 py-1 text-[11px] leading-none text-white/70 flex items-center gap-1 ${isRecording ? "bg-red-500/70 hover:bg-red-500/90" : ""}`}
+            className={`bg-white/10 hover:bg-white/20 transition-colors rounded-md px-2 py-1 text-[11px] leading-none text-white/70 flex items-center gap-1 ${isRecording ? 'bg-red-500/70 hover:bg-red-500/90' : ''}`}
             onClick={handleRecordClick}
             type="button"
           >
-            {isRecording ? <span className="animate-pulse">● Stop Recording</span> : <span>🎤 Record Voice</span>}
+            {isRecording ? (
+              <span className="animate-pulse">● Stop Recording</span>
+            ) : (
+              <span>🎤 Record Voice</span>
+            )}
           </button>
         </div>
 
@@ -202,7 +199,10 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
           </div>
 
           {isTooltipVisible && (
-            <div ref={tooltipRef} className="absolute top-full right-0 mt-2 w-80">
+            <div
+              ref={tooltipRef}
+              className="absolute top-full right-0 mt-2 w-80"
+            >
               <div className="p-3 text-xs bg-black/80 backdrop-blur-md rounded-lg border border-white/10 text-white/90 shadow-lg">
                 <div className="space-y-4">
                   <h3 className="font-medium truncate">Keyboard Shortcuts</h3>
@@ -211,32 +211,52 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
                       <div className="flex items-center justify-between">
                         <span className="truncate">Toggle Window</span>
                         <div className="flex gap-1 flex-shrink-0">
-                          <span className="bg-white/10 px-1.5 py-0.5 rounded text-[10px] leading-none">⌘</span>
-                          <span className="bg-white/10 px-1.5 py-0.5 rounded text-[10px] leading-none">B</span>
+                          <span className="bg-white/10 px-1.5 py-0.5 rounded text-[10px] leading-none">
+                            ⌘
+                          </span>
+                          <span className="bg-white/10 px-1.5 py-0.5 rounded text-[10px] leading-none">
+                            B
+                          </span>
                         </div>
                       </div>
-                      <p className="text-[10px] leading-relaxed text-white/70 truncate">Show or hide this window.</p>
+                      <p className="text-[10px] leading-relaxed text-white/70 truncate">
+                        Show or hide this window.
+                      </p>
                     </div>
                     <div className="space-y-1">
                       <div className="flex items-center justify-between">
                         <span className="truncate">Take Screenshot</span>
                         <div className="flex gap-1 flex-shrink-0">
-                          <span className="bg-white/10 px-1.5 py-0.5 rounded text-[10px] leading-none">⌘</span>
-                          <span className="bg-white/10 px-1.5 py-0.5 rounded text-[10px] leading-none">H</span>
+                          <span className="bg-white/10 px-1.5 py-0.5 rounded text-[10px] leading-none">
+                            ⌘
+                          </span>
+                          <span className="bg-white/10 px-1.5 py-0.5 rounded text-[10px] leading-none">
+                            H
+                          </span>
                         </div>
                       </div>
-                      <p className="text-[10px] leading-relaxed text-white/70 truncate">Take a screenshot of the problem description. The tool will extract and analyze the problem. The 5 latest screenshots are saved.</p>
+                      <p className="text-[10px] leading-relaxed text-white/70 truncate">
+                        Take a screenshot of the problem description. The tool
+                        will extract and analyze the problem. The 5 latest
+                        screenshots are saved.
+                      </p>
                     </div>
 
                     <div className="space-y-1">
                       <div className="flex items-center justify-between">
                         <span className="truncate">Solve Problem</span>
                         <div className="flex gap-1 flex-shrink-0">
-                          <span className="bg-white/10 px-1.5 py-0.5 rounded text-[10px] leading-none">⌘</span>
-                          <span className="bg-white/10 px-1.5 py-0.5 rounded text-[10px] leading-none">↵</span>
+                          <span className="bg-white/10 px-1.5 py-0.5 rounded text-[10px] leading-none">
+                            ⌘
+                          </span>
+                          <span className="bg-white/10 px-1.5 py-0.5 rounded text-[10px] leading-none">
+                            ↵
+                          </span>
                         </div>
                       </div>
-                      <p className="text-[10px] leading-relaxed text-white/70 truncate">Generate a solution based on the current problem.</p>
+                      <p className="text-[10px] leading-relaxed text-white/70 truncate">
+                        Generate a solution based on the current problem.
+                      </p>
                     </div>
                   </div>
                 </div>
