@@ -4,7 +4,6 @@ import { ToastViewport } from "@radix-ui/react-toast"
 import { useEffect, useRef, useState } from "react"
 import Solutions from "./_pages/Solutions"
 import { QueryClient, QueryClientProvider } from "react-query"
-import { AudioRecorder } from "./components/AudioRecorder";
 
 declare global {
   interface Window {
@@ -176,11 +175,6 @@ const App: React.FC = () => {
     <div ref={containerRef} className="min-h-0 relative">
       <QueryClientProvider client={queryClient}>
         <ToastProvider>
-          {/* Audio Recorder positioned absolute to overlay content */}
-          <div className="absolute top-4 right-4 z-50">
-            <AudioRecorder />
-          </div>
-
           {view === "queue" ? (
             <Queue setView={setView} />
           ) : view === "solutions" ? (
