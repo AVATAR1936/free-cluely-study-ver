@@ -67,7 +67,12 @@ export const PROCESSING_EVENTS = {
 // Expose the Electron API to the renderer process
 contextBridge.exposeInMainWorld("electronAPI", {
   
-  transcribeAndAnalyze: (buffer: ArrayBuffer) => ipcRenderer.invoke("transcribe-and-analyze", buffer),
+  transcribeAndAnalyze: (buffer: ArrayBuffer, options?: {
+    mode?: "auto" | "gemini" | "local"
+    allowLongTranscription?: boolean
+    geminiApiKey?: string
+    transcriptionOverride?: string
+  }) => ipcRenderer.invoke("transcribe-and-analyze", buffer, options),
 
   updateContentDimensions: (dimensions: { width: number; height: number }) =>
     ipcRenderer.invoke("update-content-dimensions", dimensions),
