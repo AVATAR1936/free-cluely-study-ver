@@ -24,48 +24,24 @@ export class TranscriptionHelper {
       await writeFileAsync(tempFilePath, audioBuffer);
       console.log(`[Transcription] Saved audio to ${tempFilePath}`);
 
-      // 2. Формируем команду
-      // ИЗМЕНЕНИЕ: Используем "py -m whisper" вместо просто "whisper",
-      // так как скрипт не добавлен в PATH, но python доступен.
-      // --model small (баланс скорости/качества)
-      // --language uk (украинский)
-      // --fp16 False (чтобы избежать предупреждений на CPU)
-      const command = `py -m whisper "${tempFilePath}" --model small --language uk --output_format txt --output_dir "${this.tempDir}" --fp16 False`;
+      const scriptPath = path.join(process.cwd(), 'transcribe_script.py'); 
+      const command = `py "${scriptPath}" "${tempFilePath}"`;
 
       console.log(`[Transcription] Running command: ${command}`);
-      
+
       // 3. Запускаем процесс
       const { stdout, stderr } = await execAsync(command);
-      
-      if (stderr) console.log(`[Transcription Log]: ${stderr}`);
 
-      // 4. Ищем файл результата
-      // Whisper обычно создает файл [имя_файла].txt
-      const expectedTxtPath = tempFilePath + ".txt";
-      
-      // Иногда Whisper меняет расширение самого файла в имени вывода
-      // Например: audio.webm -> audio.txt (вместо audio.webm.txt)
-      const alternativeTxtPath = path.join(
-          this.tempDir, 
-          path.basename(tempFilePath, path.extname(tempFilePath)) + ".txt"
-      );
-      
-      let transcription = "";
-      
-      if (fs.existsSync(expectedTxtPath)) {
-          transcription = fs.readFileSync(expectedTxtPath, 'utf-8');
-          // Удаляем файл транскрипции
-          fs.unlinkSync(expectedTxtPath);
-      } else if (fs.existsSync(alternativeTxtPath)) {
-          transcription = fs.readFileSync(alternativeTxtPath, 'utf-8');
-          fs.unlinkSync(alternativeTxtPath);
-      } else {
-          // Если файл не создан, возможно вывод в консоли
-          console.warn("[Transcription] Txt file not found, trying stdout");
-          transcription = stdout;
+      // 4. Результат теперь приходит сразу в stdout (так настроен скрипт выше)
+      // Убираем логику чтения файла .txt, она больше не нужна
+      let transcription = stdout.trim();
+
+      if (!transcription) {
+          console.warn("[Transcription] Empty result");
+          if (stderr) console.error(`[Transcription Error]: ${stderr}`);
       }
 
-      return transcription.trim();
+      return transcription;
 
     } catch (error: any) {
       console.error("[Transcription] Error:", error);
