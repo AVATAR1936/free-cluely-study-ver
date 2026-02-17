@@ -1,3 +1,4 @@
+// electron/LLMHelper.ts
 import { GoogleGenerativeAI, GenerativeModel } from "@google/generative-ai"
 import fs from "fs"
 import { TranscriptionHelper } from "./TranscriptionHelper"
@@ -11,7 +12,7 @@ export class LLMHelper {
   private model: GenerativeModel | null = null
   private readonly systemPrompt = `You are Wingman AI, a helpful, proactive assistant for any kind of problem or situation (not just coding). For any user input, analyze the situation, provide a clear problem statement, relevant context, and suggest several possible responses or actions the user could take next. Always explain your reasoning. Present your suggestions as a list of options or next steps.`
   private useOllama: boolean = false
-  private ollamaModel: string = "llama3.2"
+  private ollamaModel: string = "gemma3:12b"
   private ollamaUrl: string = "http://localhost:11434"
   private transcriptionHelper: TranscriptionHelper;
 
@@ -144,20 +145,31 @@ export class LLMHelper {
 
       // 2. Подготовка промпта для LLM
       const prompt = `
-        Ти — розумний асистент для ведення нотаток із зустрічей.
-        Нижче наведено транскрибований текст аудіозапису.
-        
-        Текст:
+        Ти — професійний технічний асистент, що спеціалізується на створенні стислих та структурованих конспектів лекцій та технічних зустрічей. 
+
+        Твоє завдання: опрацювати транскрипцію та перетворити її на логічний конспект.
+
+        ### ПРАВИЛА ОФОРМЛЕННЯ:
+        1. СТИЛЬ: Жодних есе. Використовуй лише короткі тези, марковані списки та чіткі визначення.
+        2. МАТЕМАТИКА: Усі формули, змінні та математичні вирази обов'язково пиши у форматі LaTeX (наприклад, $R = \sum p_i \times v_i$).
+        3. СТРУКТУРА: 
+          - Виділяй логічні блоки жирними заголовками (##).
+          - Кожну окрему думку пиши з нового рядка з булетом (*).
+          - Використовуй жирний шрифт для ключових термінів.
+        4. МОВА: Відповідай ВИКЛЮЧНО українською мовою.
+
+        ### АЛГОРИТМ ОПРАЦЮВАННЯ:
+        1. Класифікація понять: Виділи основні терміни, їхні види та ознаки.
+        2. Формалізація: Якщо в тексті є опис розрахунків або моделей, виведи їх у вигляді формул.
+        3. Сценарії/Приклади: Якщо згадуються конкретні випадки або умови (як-от сценарії ризику), винеси їх окремим блоком.
+        4. Action Items: Тільки якщо в тексті є конкретні доручення чи плани.
+
+        Текст транскрипції:
         """
         ${transcription}
         """
         
-        Твоє завдання:
-        1. Зробити коротке резюме (Summary) зустрічі.
-        2. Виділити ключові моменти (Key Points) списком.
-        3. Якщо є завдання або домовленості, виписати їх як "Action Items".
-        
-        Важливо: відповідай ВИКЛЮЧНО українською мовою, незалежно від того, якою мовою вівся діалог у тексті. Структуруй відповідь красиво.
+        Надай результат у вигляді чистого конспекту без вступних фраз типу "Ось ваш конспект".
       `;
 
       // 3. Отправка в LLM (Ollama или Gemini - в зависимости от того, что включено)
