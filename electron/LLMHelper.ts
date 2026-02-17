@@ -10,10 +10,12 @@ interface OllamaResponse {
 
 export class LLMHelper {
   private model: GenerativeModel | null = null
+  private geminiModel: GenerativeModel | null = null
   private readonly systemPrompt = `You are Wingman AI, a helpful, proactive assistant for any kind of problem or situation (not just coding). For any user input, analyze the situation, provide a clear problem statement, relevant context, and suggest several possible responses or actions the user could take next. Always explain your reasoning. Present your suggestions as a list of options or next steps.`
   private useOllama: boolean = false
   private ollamaModel: string = "gemma3:12b"
   private ollamaUrl: string = "http://localhost:11434"
+  private readonly transcriptionCleanupModel: string = "gemma3:4b"
   private transcriptionHelper: TranscriptionHelper;
 
   constructor(apiKey?: string, useOllama: boolean = false, ollamaModel?: string, ollamaUrl?: string) {
@@ -28,7 +30,8 @@ export class LLMHelper {
       this.initializeOllamaModel()
     } else if (apiKey) {
       const genAI = new GoogleGenerativeAI(apiKey)
-      this.model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" })
+      this.geminiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" })
+      this.model = this.geminiModel
       console.log("[LLMHelper] Using Google Gemini")
     } else {
       throw new Error("Either provide Gemini API key or enable Ollama mode")
@@ -55,6 +58,10 @@ export class LLMHelper {
   }
 
   private async callOllama(prompt: string): Promise<string> {
+    return this.callOllamaWithModel(prompt, this.ollamaModel)
+  }
+
+  private async callOllamaWithModel(prompt: string, model: string): Promise<string> {
     try {
       const response = await fetch(`${this.ollamaUrl}/api/generate`, {
         method: 'POST',
@@ -62,7 +69,7 @@ export class LLMHelper {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: this.ollamaModel,
+          model,
           prompt: prompt,
           stream: false,
           options: {
@@ -73,15 +80,77 @@ export class LLMHelper {
       })
 
       if (!response.ok) {
-        throw new Error(`Ollama API error: ${response.status} ${response.statusText}`)
+        throw new Error(`Ollama API error (${model}): ${response.status} ${response.statusText}`)
       }
 
       const data: OllamaResponse = await response.json()
       return data.response
     } catch (error) {
-      console.error("[LLMHelper] Error calling Ollama:", error)
-      throw new Error(`Failed to connect to Ollama: ${error.message}. Make sure Ollama is running on ${this.ollamaUrl}`)
+      console.error(`[LLMHelper] Error calling Ollama model ${model}:`, error)
+      throw new Error(`Failed to connect to Ollama (${model}): ${error.message}. Make sure Ollama is running on ${this.ollamaUrl}`)
     }
+  }
+
+  private async cleanupTranscriptionWithGemma(rawTranscription: string): Promise<string> {
+    const cleanupPrompt = `Ти редактор транскрипцій лекцій.
+Очисть текст від шуму живої мови та зроби мінімальне редагування:
+- виправ орфографію та граматику;
+- прибери запинки, слова-паразити, оффтоп і зайві повторення;
+- збережи фактичний зміст, терміни, числа та порядок ключових думок;
+- не додавай нової інформації;
+- поверни ТІЛЬКИ очищений текст без коментарів.
+
+Транскрипція:
+"""
+${rawTranscription}
+"""`;
+
+    const cleanedTranscription = await this.callOllamaWithModel(cleanupPrompt, this.transcriptionCleanupModel)
+    const cleaned = cleanedTranscription.trim()
+
+    if (!cleaned) {
+      throw new Error(`Модель ${this.transcriptionCleanupModel} повернула порожній текст після очистки транскрипції.`)
+    }
+
+    return cleaned
+  }
+
+  private async summarizeLectureWithGemini(cleanedTranscription: string): Promise<string> {
+    if (!this.geminiModel) {
+      throw new Error("Google Gemini не настроен. Для аудиоконспекта требуется GEMINI_API_KEY.")
+    }
+
+    const prompt = `
+        Ти — професійний технічний асистент, що спеціалізується на створенні стислих та структурованих конспектів лекцій та технічних зустрічей. 
+
+        Твоє завдання: опрацювати транскрипцію та перетворити її на логічний конспект.
+
+        ### ПРАВИЛА ОФОРМЛЕННЯ:
+        1. СТИЛЬ: Жодних есе. Використовуй лише короткі тези, марковані списки та чіткі визначення.
+        2. МАТЕМАТИКА: Усі формули, змінні та математичні вирази обов'язково пиши у форматі LaTeX (наприклад, $R = \sum p_i \times v_i$).
+        3. СТРУКТУРА: 
+          - Виділяй логічні блоки жирними заголовками (##).
+          - Кожну окрему думку пиши з нового рядка з булетом (*).
+          - Використовуй жирний шрифт для ключових термінів.
+        4. МОВА: Відповідай ВИКЛЮЧНО українською мовою.
+
+        ### АЛГОРИТМ ОПРАЦЮВАННЯ:
+        1. Класифікація понять: Виділи основні терміни, їхні види та ознаки.
+        2. Формалізація: Якщо в тексті є опис розрахунків або моделей, виведи їх у вигляді формул.
+        3. Сценарії/Приклади: Якщо згадуються конкретні випадки або умови (як-от сценарії ризику), винеси їх окремим блоком.
+        4. Action Items: Тільки якщо в тексті є конкретні доручення чи плани.
+
+        Текст транскрипції:
+        """
+        ${cleanedTranscription}
+        """
+        
+        Надай результат у вигляді чистого конспекту без вступних фраз типу "Ось ваш конспект".
+      `;
+
+    const result = await this.geminiModel.generateContent(prompt)
+    const response = await result.response
+    return response.text()
   }
 
   private async checkOllamaAvailable(): Promise<boolean> {
@@ -143,42 +212,16 @@ export class LLMHelper {
 
       console.log("[LLMHelper] Transcription complete. Length:", transcription.length);
 
-      // 2. Подготовка промпта для LLM
-      const prompt = `
-        Ти — професійний технічний асистент, що спеціалізується на створенні стислих та структурованих конспектів лекцій та технічних зустрічей. 
+      // 2. Очистка транскрипции через Ollama модель gemma3:4b
+      const cleanedTranscription = await this.cleanupTranscriptionWithGemma(transcription)
+      console.log("[LLMHelper] Transcription cleaned. Length:", cleanedTranscription.length)
 
-        Твоє завдання: опрацювати транскрипцію та перетворити її на логічний конспект.
-
-        ### ПРАВИЛА ОФОРМЛЕННЯ:
-        1. СТИЛЬ: Жодних есе. Використовуй лише короткі тези, марковані списки та чіткі визначення.
-        2. МАТЕМАТИКА: Усі формули, змінні та математичні вирази обов'язково пиши у форматі LaTeX (наприклад, $R = \sum p_i \times v_i$).
-        3. СТРУКТУРА: 
-          - Виділяй логічні блоки жирними заголовками (##).
-          - Кожну окрему думку пиши з нового рядка з булетом (*).
-          - Використовуй жирний шрифт для ключових термінів.
-        4. МОВА: Відповідай ВИКЛЮЧНО українською мовою.
-
-        ### АЛГОРИТМ ОПРАЦЮВАННЯ:
-        1. Класифікація понять: Виділи основні терміни, їхні види та ознаки.
-        2. Формалізація: Якщо в тексті є опис розрахунків або моделей, виведи їх у вигляді формул.
-        3. Сценарії/Приклади: Якщо згадуються конкретні випадки або умови (як-от сценарії ризику), винеси їх окремим блоком.
-        4. Action Items: Тільки якщо в тексті є конкретні доручення чи плани.
-
-        Текст транскрипції:
-        """
-        ${transcription}
-        """
-        
-        Надай результат у вигляді чистого конспекту без вступних фраз типу "Ось ваш конспект".
-      `;
-
-      // 3. Отправка в LLM (Ollama или Gemini - в зависимости от того, что включено)
-      // Используем chatWithGemini, так как он внутри себя уже рулит выбором провайдера (Ollama/Gemini)
-      const notes = await this.chatWithGemini(prompt);
+      // 3. Формирование итогового конспекта всегда через Google Gemini
+      const notes = await this.summarizeLectureWithGemini(cleanedTranscription)
 
       return {
         success: true,
-        transcription,
+        transcription: cleanedTranscription,
         notes
       };
 
@@ -390,7 +433,8 @@ export class LLMHelper {
   public async switchToGemini(apiKey?: string): Promise<void> {
     if (apiKey) {
       const genAI = new GoogleGenerativeAI(apiKey);
-      this.model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+      this.geminiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+      this.model = this.geminiModel;
     }
     
     if (!this.model && !apiKey) {
