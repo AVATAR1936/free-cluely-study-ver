@@ -54,19 +54,90 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({ onResult }) => {
         const arrayBuffer = await blob.arrayBuffer();
 
         try {
-            // @ts-ignore
-            const result = await window.electronAPI.transcribeAndAnalyze(arrayBuffer);
-            
-            if (result.success) {
-                console.log("Транскрипция:", result.transcription);
-                console.log("Заметки:", result.notes);
-                onResult?.({
-                  transcription: result.transcription,
-                  notes: result.notes,
-                });
-            } else {
-                onResult?.({ error: result.error || "Ошибка обработки аудио." });
+            const initialResult = await window.electronAPI.transcribeAndAnalyze(arrayBuffer, { mode: 'auto' });
+
+            if (initialResult.success) {
+              console.log("Транскрипция:", initialResult.transcription);
+              console.log("Заметки:", initialResult.notes);
+              onResult?.({
+                transcription: initialResult.transcription,
+                notes: initialResult.notes,
+              });
+              return;
             }
+
+            if (initialResult.requiresAction === 'confirm-long-transcription') {
+              const tokenCount = initialResult.tokenCount ?? 0;
+              const shouldUseGemini = window.confirm(
+                `Транскрипция содержит примерно ${tokenCount} токенов (больше 10 000).\n\nНажмите "ОК" для обработки через Gemini API.\nНажмите "Отмена" для локальной обработки через Ollama.`
+              );
+
+              if (shouldUseGemini) {
+                const apiKey = window.prompt('Введите Gemini API Key (если ключ уже настроен, оставьте поле пустым):', '') || undefined;
+                const geminiResult = await window.electronAPI.transcribeAndAnalyze(arrayBuffer, {
+                  mode: 'gemini',
+                  allowLongTranscription: true,
+                  geminiApiKey: apiKey,
+                  transcriptionOverride: initialResult.transcription,
+                });
+
+                if (!geminiResult.success) {
+                  onResult?.({ error: geminiResult.error || 'Ошибка обработки через Gemini.' });
+                  return;
+                }
+
+                onResult?.({
+                  transcription: geminiResult.transcription,
+                  notes: geminiResult.notes,
+                });
+                return;
+              }
+
+              const localResult = await window.electronAPI.transcribeAndAnalyze(arrayBuffer, {
+                mode: 'local',
+                allowLongTranscription: true,
+                transcriptionOverride: initialResult.transcription,
+              });
+
+              if (!localResult.success) {
+                onResult?.({ error: localResult.error || 'Ошибка локальной обработки.' });
+                return;
+              }
+
+              onResult?.({
+                transcription: localResult.transcription,
+                notes: localResult.notes,
+              });
+              return;
+            }
+
+            if (initialResult.requiresAction === 'provide-gemini-api-key') {
+              const apiKey = window.prompt('Для Gemini нужен API ключ. Введите Gemini API Key:', '') || undefined;
+              if (!apiKey) {
+                onResult?.({ error: 'Gemini API key не указан.' });
+                return;
+              }
+
+              const retryResult = await window.electronAPI.transcribeAndAnalyze(arrayBuffer, {
+                mode: 'gemini',
+                allowLongTranscription: true,
+                geminiApiKey: apiKey,
+                transcriptionOverride: initialResult.transcription,
+              });
+
+              if (!retryResult.success) {
+                onResult?.({ error: retryResult.error || 'Ошибка обработки через Gemini.' });
+                return;
+              }
+
+              onResult?.({
+                transcription: retryResult.transcription,
+                notes: retryResult.notes,
+              });
+              return;
+            }
+
+            onResult?.({ error: initialResult.error || "Ошибка обработки аудио." });
         } catch (e) {
             console.error(e);
             onResult?.({ error: "Ошибка отправки данных в Electron." });
