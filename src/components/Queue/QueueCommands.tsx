@@ -14,7 +14,8 @@ interface RecorderPanelState {
   visible: boolean
   title: string
   description: string
-  copyValue: string
+  ollamaCopyValue: string
+  transcriptionCopyValue: string
 }
 
 const QueueCommands: React.FC<QueueCommandsProps> = ({
@@ -31,7 +32,8 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
     visible: false,
     title: "",
     description: "",
-    copyValue: "",
+    ollamaCopyValue: "",
+    transcriptionCopyValue: "",
   })
   const [copyStatus, setCopyStatus] = useState<string>("")
   const chunks = useRef<Blob[]>([])
@@ -44,12 +46,18 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
     onTooltipVisibilityChange(isTooltipVisible, tooltipHeight)
   }, [isTooltipVisible])
 
-  const showRecorderPanel = (title: string, description: string, copyValue: string) => {
+  const showRecorderPanel = (
+    title: string,
+    description: string,
+    ollamaCopyValue: string,
+    transcriptionCopyValue: string = ""
+  ) => {
     setRecorderPanel({
       visible: true,
       title,
       description,
-      copyValue,
+      ollamaCopyValue,
+      transcriptionCopyValue,
     })
     setCopyStatus("")
   }
@@ -62,9 +70,7 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
     setIsTooltipVisible(false)
   }
 
-  const handleCopyResult = async () => {
-    const valueToCopy = recorderPanel.copyValue || recorderPanel.description
-
+  const copyToClipboard = async (valueToCopy: string) => {
     if (!valueToCopy) {
       setCopyStatus("Nothing to copy")
       return
@@ -76,6 +82,14 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
     } catch {
       setCopyStatus("Copy failed")
     }
+  }
+
+  const handleCopyResult = async () => {
+    await copyToClipboard(recorderPanel.ollamaCopyValue || recorderPanel.description)
+  }
+
+  const handleCopyTranscription = async () => {
+    await copyToClipboard(recorderPanel.transcriptionCopyValue)
   }
 
   const handleRecordClick = async () => {
@@ -165,8 +179,8 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
 
               const transcription = result.transcription?.trim() || "(empty transcription)"
               const notes = result.notes?.trim() || "(no notes)"
-              const description = `Transcription:\n${transcription}\n\nOllama Notes:\n${notes}`
-              showRecorderPanel("Record Audio (Ollama) Result", description, description)
+              const description = `Ollama Notes:\n${notes}`
+              showRecorderPanel("Record Audio (Ollama) Result", description, notes, transcription)
             }}
           />
         </div>
@@ -289,13 +303,24 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
               />
             </div>
             <div className="flex items-center justify-between gap-2">
-              <button
-                className="rounded bg-white/40 px-3 py-2 text-xs text-gray-700 transition-all hover:bg-white/60"
-                onClick={handleCopyResult}
-                type="button"
-              >
-                📋 Copy Ollama result
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  className="rounded bg-white/40 px-3 py-2 text-xs text-gray-700 transition-all hover:bg-white/60"
+                  onClick={handleCopyResult}
+                  type="button"
+                >
+                  📋 Copy Ollama result
+                </button>
+                {recorderPanel.transcriptionCopyValue && (
+                  <button
+                    className="rounded bg-white/40 px-3 py-2 text-xs text-gray-700 transition-all hover:bg-white/60"
+                    onClick={handleCopyTranscription}
+                    type="button"
+                  >
+                    📋 Copy transcription
+                  </button>
+                )}
+              </div>
               <span className="text-xs text-gray-600">{copyStatus}</span>
               <button
                 className="rounded bg-white/40 px-3 py-2 text-xs text-gray-700 transition-all hover:bg-white/60"
