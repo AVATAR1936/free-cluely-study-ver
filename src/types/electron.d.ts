@@ -58,6 +58,21 @@ export interface ElectronAPI {
   switchToGemini: (apiKey?: string) => Promise<{ success: boolean; error?: string }>
   testLlmConnection: () => Promise<{ success: boolean; error?: string }>
 
+  transcribeVideoFileDebug: (videoPath: string, options?: {
+    mode?: "auto" | "gemini" | "local"
+    allowLongTranscription?: boolean
+    geminiApiKey?: string
+    keepExtractedAudio?: boolean
+  }) => Promise<{
+    success: boolean;
+    transcription: string;
+    notes: string;
+    tokenCount?: number;
+    requiresAction?: "confirm-long-transcription" | "provide-gemini-api-key";
+    error?: string;
+    extractedAudioPath?: string;
+  }>
+
   // --- Generic ---
   invoke: (channel: string, ...args: any[]) => Promise<any>
 }
