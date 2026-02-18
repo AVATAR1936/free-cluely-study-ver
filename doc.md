@@ -61,3 +61,37 @@ Roy was trolling interviews, but here's the thing—this invisible overlay tech 
 ### Want to Use This for Good?
 
 Everything's open-sourced right [here](https://github.com/Prat011/free-cluely). If this sounds like something your team could use ethically and effectively, reach out. Let's build something legit. You can contact me at prathit3.14@gmail.com
+
+## Update: Transcription Feature and Operational Requirements
+
+The project now includes a dedicated transcription pipeline for meeting audio and screen-share audio.
+
+### What was added
+- Local transcription through `transcribe_script.py` and `faster-whisper`.
+- A UI flow for recording audio (`🎙️ Record Audio`) and receiving:
+  - raw transcription,
+  - structured notes generated from that transcription.
+- Better handling for long transcript outputs via an increased command buffer in Electron.
+
+### Functional behavior
+1. User starts audio recording from the app UI.
+2. App captures shared system audio (`getDisplayMedia`).
+3. Electron passes recorded data to Python Whisper script.
+4. Whisper returns text transcript (currently configured for Ukrainian language).
+5. Transcript is sent to LLM (Ollama/Gemini) to produce concise structured notes.
+
+### Requirements
+- Python 3.9+
+- `faster-whisper` Python package
+- FFmpeg in `PATH`
+- CUDA-capable NVIDIA GPU for current default mode (`large-v3`, `cuda`, `float16`)
+
+### Known constraints
+- If **Share audio** is not enabled in the system dialog, transcription fails or returns empty output.
+- Current script is GPU-first; no automatic CPU fallback is enabled by default.
+- Very long recordings may still need splitting, despite enlarged output buffer.
+
+### Error examples users may see
+- `Error: faster-whisper not installed`
+- `CUDA Error: ...`
+- `Transcription result is empty`

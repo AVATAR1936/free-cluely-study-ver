@@ -14,6 +14,22 @@ If you’re looking for a hosted desktop recording API, consider checking out [R
 - **Either** a Gemini API key (get it from [Google AI Studio](https://makersuite.google.com/app/apikey))
 - **Or** Ollama installed locally for private LLM usage (recommended for privacy)
 
+#### Additional prerequisites for transcription (Whisper)
+- Python 3.9+ available in terminal (`python3`/`python`, or `py` on Windows)
+- `faster-whisper` installed in the same Python environment used by Electron
+- FFmpeg installed and available in `PATH`
+- NVIDIA CUDA-capable GPU for default transcription mode (`large-v3`, `device="cuda"`, `compute_type="float16"`)
+
+Quick setup:
+
+```bash
+python3 -m pip install --upgrade pip
+python3 -m pip install faster-whisper
+ffmpeg -version
+```
+
+> Note: current `transcribe_script.py` is GPU-first. CPU fallback exists in comments and can be enabled manually.
+
 ### Installation Steps
 
 1. Clone the repository:
@@ -173,6 +189,24 @@ If you see other errors:
 - Process audio files and recordings
 - Real-time transcription and analysis
 - Perfect for meeting notes and content review
+
+### **Transcription Workflow (New)**
+- `🎙️ Record Audio` captures system audio via `getDisplayMedia` (screen-share audio).
+- Audio is sent to Electron and transcribed locally through `transcribe_script.py` + `faster-whisper`.
+- Whisper output is then summarized into structured notes by the selected LLM provider (Ollama/Gemini).
+- UI returns both generated notes and raw transcription with separate copy actions.
+
+#### Transcription requirements and constraints
+- In the OS/browser share dialog, **Share audio** must be enabled.
+- Whisper language is currently fixed to Ukrainian (`language="uk"`).
+- Empty recordings or failed recognition return explicit transcription errors.
+- Long transcriptions are supported with increased Node `exec` buffer (16 MB), but very long sessions may still need splitting.
+- For packaged builds, include `transcribe_script.py` in runtime-accessible resources.
+
+#### Transcription troubleshooting
+- `Error: faster-whisper not installed` → install package in active Python environment.
+- `CUDA Error: ...` → verify NVIDIA CUDA runtime libraries and compatible driver setup.
+- `Transcription result is empty` → re-record and verify audio was actually shared/captured.
 
 ### **Contextual Chat**
 - Chat with AI about anything you see on screen
