@@ -208,7 +208,6 @@ export class LLMHelper {
       }
 
       console.log("[LLMHelper] Debug Transcription complete. Length:", transcription.length);
-      console.log(`[LLMHelper] Debug pipeline mode: ${this.useOllama ? "local (Whisper -> Qwen 3.8B -> Gemma 3.12B)" : "cloud (Gemini direct)"}`);
 
       // 2. Используем тот же промпт, что и в processMeetingAudio для чистоты эксперимента
       const prompt = `
