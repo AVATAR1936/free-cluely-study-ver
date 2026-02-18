@@ -119,7 +119,7 @@ export function initializeIpcHandlers(appState: AppState): void {
       await extraction.cleanupAudio()
       return result
     } catch (error: any) {
-      await extraction.cleanupAudio().catch((): void => undefined)
+      await extraction.cleanupAudio().catch(() => undefined)
       throw error
     }
   })
