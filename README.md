@@ -266,26 +266,3 @@ ISC License - Free for personal and commercial use.
 
 ### 🏷️ Tags
 `ai-assistant` `meeting-notes` `interview-helper` `presentation-support` `ollama` `gemini-ai` `electron-app` `cross-platform` `privacy-focused` `open-source` `local-ai` `screenshot-analysis` `academic-helper` `sales-assistant` `coding-companion`
-
-
-## DevTools: отладка транскрипции по видео с диска
-
-В renderer DevTools можно запустить отладочную цепочку: взять локальный видеофайл, извлечь из него аудио через `ffmpeg`, после чего получить транскрипцию и заметки.
-
-Пример в консоли DevTools:
-
-```js
-await window.electronAPI.transcribeVideoFileDebug('/absolute/path/to/video.mp4', {
-  mode: 'auto', // auto | gemini | local
-  allowLongTranscription: true,
-  keepExtractedAudio: false
-})
-```
-
-Результат:
-- `transcription` — распознанный текст;
-- `notes` — конспект/анализ;
-- `tokenCount` — оценка объёма;
-- `requiresAction` — флаг доп. действия для длинной транскрипции или Gemini API key.
-
-Если нужно сохранить извлечённый `.wav` для ручной проверки, передайте `keepExtractedAudio: true` — в ответе вернётся `extractedAudioPath`.

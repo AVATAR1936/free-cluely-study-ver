@@ -43,20 +43,6 @@ interface ElectronAPI {
   testLlmConnection: () => Promise<{ success: boolean; error?: string }>
   
   invoke: (channel: string, ...args: any[]) => Promise<any>
-  transcribeVideoFileDebug: (videoPath: string, options?: {
-    mode?: "auto" | "gemini" | "local"
-    allowLongTranscription?: boolean
-    geminiApiKey?: string
-    keepExtractedAudio?: boolean
-  }) => Promise<{
-    success: boolean
-    transcription: string
-    notes: string
-    tokenCount?: number
-    requiresAction?: "confirm-long-transcription" | "provide-gemini-api-key"
-    error?: string
-    extractedAudioPath?: string
-  }>
 }
 
 export const PROCESSING_EVENTS = {
@@ -87,13 +73,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
     geminiApiKey?: string
     transcriptionOverride?: string
   }) => ipcRenderer.invoke("transcribe-and-analyze", buffer, options),
-
-  transcribeVideoFileDebug: (videoPath: string, options?: {
-    mode?: "auto" | "gemini" | "local"
-    allowLongTranscription?: boolean
-    geminiApiKey?: string
-    keepExtractedAudio?: boolean
-  }) => ipcRenderer.invoke("transcribe-video-file-debug", videoPath, options),
 
   updateContentDimensions: (dimensions: { width: number; height: number }) =>
     ipcRenderer.invoke("update-content-dimensions", dimensions),
