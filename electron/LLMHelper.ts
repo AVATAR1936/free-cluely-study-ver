@@ -55,6 +55,10 @@ export class LLMHelper {
   }
 
   private async callOllama(prompt: string): Promise<string> {
+    return this.callOllamaWithModel(this.ollamaModel, prompt);
+  }
+
+  private async callOllamaWithModel(model: string, prompt: string, temperature: number = 0.7): Promise<string> {
     try {
       const response = await fetch(`${this.ollamaUrl}/api/generate`, {
         method: 'POST',
@@ -62,11 +66,11 @@ export class LLMHelper {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: this.ollamaModel,
+          model,
           prompt: prompt,
           stream: false,
           options: {
-            temperature: 0.7,
+            temperature,
             top_p: 0.9,
           }
         }),
@@ -80,8 +84,66 @@ export class LLMHelper {
       return data.response
     } catch (error) {
       console.error("[LLMHelper] Error calling Ollama:", error)
-      throw new Error(`Failed to connect to Ollama: ${error.message}. Make sure Ollama is running on ${this.ollamaUrl}`)
+      throw new Error(`Failed to connect to Ollama model '${model}': ${error.message}. Make sure Ollama is running on ${this.ollamaUrl}`)
     }
+  }
+
+  private async processLocalTranscriptionPipeline(transcription: string): Promise<string> {
+    const cleanedTranscriptionPrompt = `
+Ти — редактор технічних транскрипцій українською мовою.
+
+Завдання: очистити транскрипт після Whisper без втрати змісту.
+
+ПРАВИЛА:
+1. Пиши ВИКЛЮЧНО українською мовою.
+2. Прибери шум живої мови: слова-паразити, міжвигуки, зайві паузи, обірвані фрази.
+3. Усунь повтори та дублікати думок, але збережи фактичну інформацію.
+4. Віднови коректні технічні терміни, назви технологій, математичні позначення та формули.
+5. Не додавай нових фактів, яких немає у транскрипті.
+6. Поверни лише очищений текст, без коментарів, заголовків чи пояснень.
+
+Транскрипція:
+"""
+${transcription}
+"""
+`;
+
+    const cleanedTranscription = await this.callOllamaWithModel("qwen3:8b", cleanedTranscriptionPrompt, 0.15);
+
+    if (!cleanedTranscription || cleanedTranscription.trim().length === 0) {
+      throw new Error("Qwen не повернув очищений текст транскрипції.");
+    }
+
+    const notesPrompt = `
+Ти — технічний аналітик, що готує детальні конспекти українською мовою.
+
+Створи структурований технічний конспект на основі очищеного тексту.
+
+ВИМОГИ ДО ФОРМАТУ:
+1. Відповідь ВИКЛЮЧНО українською мовою.
+2. Використовуй розділи у форматі Markdown-заголовків другого рівня (##).
+3. Обов'язково створи окремі блоки:
+   - **Основні теми**
+   - **Ключові тези**
+   - **Терміни та визначення**
+4. У блоці "Ключові тези" подавай інформацію маркованим списком.
+5. Якщо є формули або змінні — записуй їх у LaTeX.
+6. Не вигадуй фактів. Спирайся лише на наданий текст.
+7. Не додавай вступних/завершальних фраз. Поверни лише сам конспект.
+
+Очищений текст:
+"""
+${cleanedTranscription}
+"""
+`;
+
+    const notes = await this.callOllamaWithModel("gemma3:12b", notesPrompt, 0.2);
+
+    if (!notes || notes.trim().length === 0) {
+      throw new Error("Gemma не повернула конспект.");
+    }
+
+    return notes;
   }
 
   private async checkOllamaAvailable(): Promise<boolean> {
@@ -143,8 +205,8 @@ export class LLMHelper {
 
       console.log("[LLMHelper] Transcription complete. Length:", transcription.length);
 
-      // 2. Подготовка промпта для LLM
-      const prompt = `
+      // 2. Подготовка промпта для Gemini (используется только при cloud-режиме)
+      const geminiPrompt = `
         Ти — професійний технічний асистент, що спеціалізується на створенні стислих та структурованих конспектів лекцій та технічних зустрічей. 
 
         Твоє завдання: опрацювати транскрипцію та перетворити її на логічний конспект.
@@ -172,9 +234,11 @@ export class LLMHelper {
         Надай результат у вигляді чистого конспекту без вступних фраз типу "Ось ваш конспект".
       `;
 
-      // 3. Отправка в LLM (Ollama или Gemini - в зависимости от того, что включено)
-      // Используем chatWithGemini, так как он внутри себя уже рулит выбором провайдера (Ollama/Gemini)
-      const notes = await this.chatWithGemini(prompt);
+      // 3. Локальный пайплайн: Whisper -> Qwen 3.8B (очистка) -> Gemma 3.12B (конспект)
+      //    Облачный пайплайн (Gemini): транскрипция сразу отправляется в API
+      const notes = this.useOllama
+        ? await this.processLocalTranscriptionPipeline(transcription)
+        : await this.chatWithGemini(geminiPrompt);
 
       return {
         success: true,
@@ -209,8 +273,8 @@ export class LLMHelper {
 
       console.log("[LLMHelper] Debug Transcription complete. Length:", transcription.length);
 
-      // 2. Используем тот же промпт, что и в processMeetingAudio для чистоты эксперимента
-      const prompt = `
+      // 2. Используем тот же cloud-промпт, что и в processMeetingAudio
+      const geminiPrompt = `
         Ти — професійний технічний асистент, що спеціалізується на створенні стислих та структурованих конспектів лекцій та технічних зустрічей. 
 
         Твоє завдання: опрацювати транскрипцію та перетворити її на логічний конспект.
@@ -238,8 +302,11 @@ export class LLMHelper {
         Надай результат у вигляді чистого конспекту.
       `;
 
-      // 3. Отправка в LLM
-      const notes = await this.chatWithGemini(prompt);
+      // 3. Локальный пайплайн: Whisper -> Qwen 3.8B -> Gemma 3.12B
+      //    Для Gemini отправляем транскрипцию напрямую в API
+      const notes = this.useOllama
+        ? await this.processLocalTranscriptionPipeline(transcription)
+        : await this.chatWithGemini(geminiPrompt);
 
       return {
         success: true,
