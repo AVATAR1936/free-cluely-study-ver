@@ -37,17 +37,10 @@ export interface ElectronAPI {
   analyzeImageFile: (path: string) => Promise<{ text: string; timestamp: number }>
 
   // --- НОВОЕ: Транскрибация и Заметки ---
-  transcribeAndAnalyze: (buffer: ArrayBuffer, options?: {
-    mode?: "auto" | "gemini" | "local"
-    allowLongTranscription?: boolean
-    geminiApiKey?: string
-    transcriptionOverride?: string
-  }) => Promise<{
+  transcribeAndAnalyze: (buffer: ArrayBuffer) => Promise<{
     success: boolean;
     transcription?: string;
     notes?: string;
-    tokenCount?: number;
-    requiresAction?: "confirm-long-transcription" | "provide-gemini-api-key";
     error?: string;
   }>
 

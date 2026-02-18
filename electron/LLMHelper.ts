@@ -8,24 +8,6 @@ interface OllamaResponse {
   done: boolean
 }
 
-type MeetingProcessingMode = "auto" | "gemini" | "local"
-
-interface ProcessMeetingAudioOptions {
-  mode?: MeetingProcessingMode
-  allowLongTranscription?: boolean
-  geminiApiKey?: string
-  transcriptionOverride?: string
-}
-
-interface MeetingProcessingResult {
-  success: boolean
-  transcription: string
-  notes: string
-  tokenCount?: number
-  requiresAction?: "confirm-long-transcription" | "provide-gemini-api-key"
-  error?: string
-}
-
 export class LLMHelper {
   private model: GenerativeModel | null = null
   private readonly systemPrompt = `You are Wingman AI, a helpful, proactive assistant for any kind of problem or situation (not just coding). For any user input, analyze the situation, provide a clear problem statement, relevant context, and suggest several possible responses or actions the user could take next. Always explain your reasoning. Present your suggestions as a list of options or next steps.`
@@ -33,7 +15,6 @@ export class LLMHelper {
   private ollamaModel: string = "gemma3:12b"
   private ollamaUrl: string = "http://localhost:11434"
   private transcriptionHelper: TranscriptionHelper;
-  private readonly transcriptionTokenThreshold = 10000;
 
   constructor(apiKey?: string, useOllama: boolean = false, ollamaModel?: string, ollamaUrl?: string) {
     this.useOllama = useOllama
@@ -53,11 +34,6 @@ export class LLMHelper {
       throw new Error("Either provide Gemini API key or enable Ollama mode")
     }
     this.transcriptionHelper = new TranscriptionHelper();
-  }
-
-  private createGeminiModel(apiKey: string): GenerativeModel {
-    const genAI = new GoogleGenerativeAI(apiKey)
-    return genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" })
   }
 
   private async fileToGenerativePart(imagePath: string) {
@@ -149,15 +125,26 @@ export class LLMHelper {
     }
   }
 
-  private estimateUkrainianTokens(text: string): number {
-    // Приближенная оценка: слова + знаки препинания/символы.
-    const wordLike = text.match(/[\p{L}\p{N}_'-]+/gu) ?? []
-    const punctuation = text.match(/[^\s\p{L}\p{N}_'-]/gu) ?? []
-    return wordLike.length + punctuation.length
-  }
+  public async processMeetingAudio(audioBuffer: Buffer): Promise<{ success: boolean, transcription: string, notes: string, error?: string }> {
+    try {
+      console.log("[LLMHelper] Starting meeting processing...");
 
-  private buildMeetingPrompt(transcription: string): string {
-    return `
+      // 1. Транскрибация (локально через Whisper)
+      const transcription = await this.transcriptionHelper.transcribeAudio(audioBuffer);
+      
+      if (!transcription || transcription.trim().length === 0) {
+        return { 
+            success: false, 
+            transcription: "", 
+            notes: "", 
+            error: "Whisper не смог распознать речь или запись пустая." 
+        };
+      }
+
+      console.log("[LLMHelper] Transcription complete. Length:", transcription.length);
+
+      // 2. Подготовка промпта для LLM
+      const prompt = `
         Ти — професійний технічний асистент, що спеціалізується на створенні стислих та структурованих конспектів лекцій та технічних зустрічей. 
 
         Твоє завдання: опрацювати транскрипцію та перетворити її на логічний конспект.
@@ -183,84 +170,16 @@ export class LLMHelper {
         """
         
         Надай результат у вигляді чистого конспекту без вступних фраз типу "Ось ваш конспект".
-      `
-  }
+      `;
 
-  private async summarizeTranscription(
-    transcription: string,
-    mode: MeetingProcessingMode,
-    geminiApiKey?: string
-  ): Promise<string> {
-    const prompt = this.buildMeetingPrompt(transcription)
-
-    if (mode === "local") {
-      return this.callOllama(prompt)
-    }
-
-    if (mode === "gemini") {
-      const geminiModel = this.model ?? (geminiApiKey ? this.createGeminiModel(geminiApiKey) : null)
-      if (!geminiModel) {
-        throw new Error("GEMINI_API_KEY_REQUIRED")
-      }
-      if (!this.model && geminiApiKey) {
-        this.model = geminiModel
-      }
-      const result = await geminiModel.generateContent(prompt)
-      const response = await result.response
-      return response.text()
-    }
-
-    return this.chatWithGemini(prompt)
-  }
-
-  public async processMeetingAudio(audioBuffer: Buffer, options: ProcessMeetingAudioOptions = {}): Promise<MeetingProcessingResult> {
-    try {
-      console.log("[LLMHelper] Starting meeting processing...");
-
-      // 1. Транскрибация (локально через Whisper)
-      const transcription = options.transcriptionOverride ?? await this.transcriptionHelper.transcribeAudio(audioBuffer);
-      
-      if (!transcription || transcription.trim().length === 0) {
-        return { 
-            success: false, 
-            transcription: "", 
-            notes: "", 
-            error: "Whisper не смог распознать речь или запись пустая." 
-        };
-      }
-
-      console.log("[LLMHelper] Transcription complete. Length:", transcription.length);
-      const tokenCount = this.estimateUkrainianTokens(transcription)
-
-      if (tokenCount > this.transcriptionTokenThreshold && !options.allowLongTranscription) {
-        return {
-          success: false,
-          transcription,
-          notes: "",
-          tokenCount,
-          requiresAction: "confirm-long-transcription"
-        }
-      }
-
-      const mode = options.mode ?? "auto"
-      if (mode === "gemini" && !this.model && !options.geminiApiKey) {
-        return {
-          success: false,
-          transcription,
-          notes: "",
-          tokenCount,
-          requiresAction: "provide-gemini-api-key",
-          error: "Для обробки через Gemini потрібен API ключ."
-        }
-      }
-
-      const notes = await this.summarizeTranscription(transcription, mode, options.geminiApiKey)
+      // 3. Отправка в LLM (Ollama или Gemini - в зависимости от того, что включено)
+      // Используем chatWithGemini, так как он внутри себя уже рулит выбором провайдера (Ollama/Gemini)
+      const notes = await this.chatWithGemini(prompt);
 
       return {
         success: true,
         transcription,
-        notes,
-        tokenCount
+        notes
       };
 
     } catch (error: any) {
