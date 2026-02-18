@@ -43,6 +43,7 @@ interface ElectronAPI {
   testLlmConnection: () => Promise<{ success: boolean; error?: string }>
   
   invoke: (channel: string, ...args: any[]) => Promise<any>
+  debugProcessVideo: (path: string) => Promise<any>
 }
 
 export const PROCESSING_EVENTS = {
@@ -192,5 +193,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   switchToGemini: (apiKey?: string) => ipcRenderer.invoke("switch-to-gemini", apiKey),
   testLlmConnection: () => ipcRenderer.invoke("test-llm-connection"),
   
-  invoke: (channel: string, ...args: any[]) => ipcRenderer.invoke(channel, ...args)
+  invoke: (channel: string, ...args: any[]) => ipcRenderer.invoke(channel, ...args),
+  debugProcessVideo: (path: string) => ipcRenderer.invoke("debug-process-video", path)
 } as ElectronAPI)

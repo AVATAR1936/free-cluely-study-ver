@@ -113,6 +113,17 @@ export function initializeIpcHandlers(appState: AppState): void {
     }
   });
 
+  ipcMain.handle("debug-process-video", async (event, filePath: string) => {
+    try {
+      console.log("Debug request received for:", filePath);
+      const result = await appState.processingHelper.getLLMHelper().debugProcessVideo(filePath);
+      return result;
+    } catch (error: any) {
+      console.error("Error in debug-process-video handler:", error);
+      return { success: false, error: error.message };
+    }
+  });
+
   ipcMain.handle("quit-app", () => {
     app.quit()
   })

@@ -193,6 +193,66 @@ export class LLMHelper {
     }
   }
 
+  public async debugProcessVideo(filePath: string): Promise<any> {
+    try {
+      console.log("[LLMHelper] Starting DEBUG video processing...");
+
+      // 1. Транскрибация существующего файла
+      const transcription = await this.transcriptionHelper.transcribeExistingFile(filePath);
+      
+      if (!transcription || transcription.trim().length === 0) {
+        return { 
+            success: false, 
+            error: "Whisper не смог распознать речь в файле." 
+        };
+      }
+
+      console.log("[LLMHelper] Debug Transcription complete. Length:", transcription.length);
+
+      // 2. Используем тот же промпт, что и в processMeetingAudio для чистоты эксперимента
+      const prompt = `
+        Ти — професійний технічний асистент, що спеціалізується на створенні стислих та структурованих конспектів лекцій та технічних зустрічей. 
+
+        Твоє завдання: опрацювати транскрипцію та перетворити її на логічний конспект.
+
+        ### ПРАВИЛА ОФОРМЛЕННЯ:
+        1. СТИЛЬ: Жодних есе. Використовуй лише короткі тези, марковані списки та чіткі визначення.
+        2. МАТЕМАТИКА: Усі формули, змінні та математичні вирази обов'язково пиши у форматі LaTeX (наприклад, $R = \sum p_i \times v_i$).
+        3. СТРУКТУРА: 
+          - Виділяй логічні блоки жирними заголовками (##).
+          - Кожну окрему думку пиши з нового рядка з булетом (*).
+          - Використовуй жирний шрифт для ключових термінів.
+        4. МОВА: Відповідай ВИКЛЮЧНО українською мовою.
+
+        ### АЛГОРИТМ ОПРАЦЮВАННЯ:
+        1. Класифікація понять: Виділи основні терміни, їхні види та ознаки.
+        2. Формалізація: Якщо в тексті є опис розрахунків або моделей, виведи їх у вигляді формул.
+        3. Сценарії/Приклади: Якщо згадуються конкретні випадки або умови, винеси їх окремим блоком.
+        4. Action Items: Тільки якщо в тексті є конкретні доручення чи плани.
+
+        Текст транскрипції:
+        """
+        ${transcription}
+        """
+        
+        Надай результат у вигляді чистого конспекту.
+      `;
+
+      // 3. Отправка в LLM
+      const notes = await this.chatWithGemini(prompt);
+
+      return {
+        success: true,
+        transcription,
+        notes
+      };
+
+    } catch (error: any) {
+      console.error("[LLMHelper] Debug Error:", error);
+      return { success: false, error: error.message };
+    }
+  }
+
   public async extractProblemFromImages(imagePaths: string[]) {
     try {
       const imageParts = await Promise.all(imagePaths.map(path => this.fileToGenerativePart(path)))
