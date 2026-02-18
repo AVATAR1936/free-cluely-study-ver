@@ -197,15 +197,10 @@ export function initializeIpcHandlers(appState: AppState): void {
     }
   });
 
-  ipcMain.handle("transcribe-and-analyze", async (event, arrayBuffer: ArrayBuffer, options?: {
-    mode?: "auto" | "gemini" | "local"
-    allowLongTranscription?: boolean
-    geminiApiKey?: string
-    transcriptionOverride?: string
-  }) => {
+  ipcMain.handle("transcribe-and-analyze", async (event, arrayBuffer: ArrayBuffer) => {
     try {
       const buffer = Buffer.from(arrayBuffer);
-      const result = await appState.processingHelper.getLLMHelper().processMeetingAudio(buffer, options);
+      const result = await appState.processingHelper.getLLMHelper().processMeetingAudio(buffer);
       return result;
     } catch (error: any) {
       console.error("IPC Error:", error);
