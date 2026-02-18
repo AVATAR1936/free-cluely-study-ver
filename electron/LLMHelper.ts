@@ -32,6 +32,7 @@ export class LLMHelper {
   private useOllama: boolean = false
   private ollamaModel: string = "gemma3:12b"
   private ollamaUrl: string = "http://localhost:11434"
+  private ollamaInitializationPromise: Promise<void> | null = null
   private transcriptionHelper: TranscriptionHelper;
   private readonly transcriptionTokenThreshold = 10000;
 
@@ -44,7 +45,7 @@ export class LLMHelper {
       console.log(`[LLMHelper] Using Ollama with model: ${this.ollamaModel}`)
       
       // Auto-detect and use first available model if specified model doesn't exist
-      this.initializeOllamaModel()
+      this.ollamaInitializationPromise = this.initializeOllamaModel()
     } else if (apiKey) {
       const genAI = new GoogleGenerativeAI(apiKey)
       this.model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" })
@@ -119,7 +120,7 @@ export class LLMHelper {
 
   private async initializeOllamaModel(): Promise<void> {
     try {
-      const availableModels = await this.getOllamaModels()
+      const availableModels = await this.fetchOllamaModels()
       if (availableModels.length === 0) {
         console.warn("[LLMHelper] No Ollama models found")
         return
@@ -138,7 +139,7 @@ export class LLMHelper {
       console.error(`[LLMHelper] Failed to initialize Ollama model: ${error.message}`)
       // Try to use first available model as fallback
       try {
-        const models = await this.getOllamaModels()
+        const models = await this.fetchOllamaModels()
         if (models.length > 0) {
           this.ollamaModel = models[0]
           console.log(`[LLMHelper] Fallback to: ${this.ollamaModel}`)
@@ -147,6 +148,17 @@ export class LLMHelper {
         console.error(`[LLMHelper] Fallback also failed: ${fallbackError.message}`)
       }
     }
+  }
+
+  private async ensureOllamaModelInitialized(): Promise<void> {
+    if (!this.ollamaInitializationPromise) {
+      this.ollamaInitializationPromise = this.initializeOllamaModel().catch((error) => {
+        this.ollamaInitializationPromise = null
+        throw error
+      })
+    }
+
+    await this.ollamaInitializationPromise
   }
 
   private estimateUkrainianTokens(text: string): number {
@@ -194,6 +206,7 @@ export class LLMHelper {
     const prompt = this.buildMeetingPrompt(transcription)
 
     if (mode === "local") {
+      await this.ensureOllamaModelInitialized()
       return this.callOllama(prompt)
     }
 
@@ -431,9 +444,7 @@ export class LLMHelper {
     return this.useOllama;
   }
 
-  public async getOllamaModels(): Promise<string[]> {
-    if (!this.useOllama) return [];
-    
+  private async fetchOllamaModels(): Promise<string[]> {
     try {
       const response = await fetch(`${this.ollamaUrl}/api/tags`);
       if (!response.ok) throw new Error('Failed to fetch models');
@@ -444,6 +455,11 @@ export class LLMHelper {
       console.error("[LLMHelper] Error fetching Ollama models:", error);
       return [];
     }
+  }
+
+  public async getOllamaModels(): Promise<string[]> {
+    if (!this.useOllama) return [];
+    return this.fetchOllamaModels();
   }
 
   public getCurrentProvider(): "ollama" | "gemini" {
