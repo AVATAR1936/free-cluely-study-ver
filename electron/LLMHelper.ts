@@ -360,6 +360,10 @@ export class LLMHelper {
     }
   }
 
+  public async readAudioFileAsBuffer(audioPath: string): Promise<Buffer> {
+    return fs.promises.readFile(audioPath)
+  }
+
   public async analyzeAudioFile(audioPath: string) {
     try {
       const audioData = await fs.promises.readFile(audioPath);
