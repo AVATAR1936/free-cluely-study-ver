@@ -3,10 +3,7 @@
 import { ipcMain, app } from "electron"
 import { AppState } from "./main"
 
-import { VideoTranscriptionDebugHelper } from "./VideoTranscriptionDebugHelper"
-
 export function initializeIpcHandlers(appState: AppState): void {
-  const videoTranscriptionDebugHelper = new VideoTranscriptionDebugHelper()
   ipcMain.handle(
     "update-content-dimensions",
     async (event, { width, height }: { width: number; height: number }) => {
@@ -91,35 +88,6 @@ export function initializeIpcHandlers(appState: AppState): void {
       return result
     } catch (error: any) {
       console.error("Error in analyze-audio-file handler:", error)
-      throw error
-    }
-  })
-
-
-  ipcMain.handle("transcribe-video-file-debug", async (_event, videoPath: string, options?: {
-    mode?: "auto" | "gemini" | "local"
-    allowLongTranscription?: boolean
-    geminiApiKey?: string
-    keepExtractedAudio?: boolean
-  }) => {
-    const extraction = await videoTranscriptionDebugHelper.extractAudioFromVideo(videoPath)
-
-    try {
-      const audioBuffer = await appState.processingHelper.getLLMHelper().readAudioFileAsBuffer(extraction.audioPath)
-      const result = await appState.processingHelper.getLLMHelper().processMeetingAudio(audioBuffer, {
-        mode: options?.mode,
-        allowLongTranscription: options?.allowLongTranscription,
-        geminiApiKey: options?.geminiApiKey
-      })
-
-      if (options?.keepExtractedAudio) {
-        return { ...result, extractedAudioPath: extraction.audioPath }
-      }
-
-      await extraction.cleanupAudio()
-      return result
-    } catch (error: any) {
-      await extraction.cleanupAudio().catch(() => undefined)
       throw error
     }
   })

@@ -64,21 +64,6 @@ declare global {
       moveWindowDown: () => Promise<void>
       quitApp: () => Promise<void>
       
-      transcribeVideoFileDebug: (videoPath: string, options?: {
-        mode?: "auto" | "gemini" | "local"
-        allowLongTranscription?: boolean
-        geminiApiKey?: string
-        keepExtractedAudio?: boolean
-      }) => Promise<{
-        success: boolean;
-        transcription: string;
-        notes: string;
-        tokenCount?: number;
-        requiresAction?: "confirm-long-transcription" | "provide-gemini-api-key";
-        error?: string;
-        extractedAudioPath?: string;
-      }>
-
       // LLM Model Management
       getCurrentLlmConfig: () => Promise<{ provider: "ollama" | "gemini"; model: string; isOllama: boolean }>
       getAvailableOllamaModels: () => Promise<string[]>
